@@ -1,0 +1,98 @@
+#!groovy
+
+import gov.dhs.uscis.pcim.pcs.pipeline.PcsPipelineStep
+import gov.dhs.uscis.pcim.pcs.ioc.ContextRegistry
+
+ContextRegistry.registerDefaultContext(this,env)
+def pcsPipelineStep = new PcsPipelineStep()
+
+
+pipeline {
+    agent { label 'nonprod-agent' }
+    triggers { pollSCM('H/1 * * * *') }
+
+    options {
+      preserveStashes(buildCount: 5)
+      buildDiscarder(logRotator(numToKeepStr: '20'))
+    }
+    environment {
+        GITHUB_REPO = "pcim-pcs-gradle-plugin.git"
+        MSG_CHANGELOG_LOOP = /Changelog updated by Jenkins/
+        NEXUS_CRED = credentials("52773302-db3b-468a-a63a-091fd3164aa9")
+    }
+
+  stages {
+    stage("Setup") {
+      when {
+        not { changelog "$MSG_CHANGELOG_LOOP" }
+        beforeAgent true
+      }
+      steps {
+        script {
+          withAWS(region:'us-east-1',credentials:'pcs-non-prod-aws-cred') {
+            s3Download(pathStyleAccessEnabled: true, file:"$WORKSPACE/keystore/uscis-nexus-truststore.jks", bucket:'sid-pcs-nonprod-credentials', path:'uscis-nexus-truststore.jks', force:true)
+          }
+        }
+      }
+    }
+    stage ('Build') {
+      when {
+        not { changelog "$MSG_CHANGELOG_LOOP" }
+        beforeAgent true
+      }
+      steps {
+        script {
+          pcsPipelineStep.assembleArtifact()
+        }
+      }
+    }
+    stage ('Test & Code Coverage') {
+      when {
+        not { changelog "$MSG_CHANGELOG_LOOP" }
+        beforeAgent true
+      }
+      steps {
+        script {
+          pcsPipelineStep.testAndRecordCodeCoverage()
+        }
+      }
+    }
+    stage ('Code Analysis') {
+      when {
+        not { changelog "$MSG_CHANGELOG_LOOP" }
+        beforeAgent true
+      }
+      steps {
+        script {
+          pcsPipelineStep.checkCodeAnalysis()
+        }
+      }
+    }
+  stage('Tag & Publish to Nexus') {
+      when {
+          branch 'master'
+          not { changelog "$MSG_CHANGELOG_LOOP" }
+          beforeAgent true
+      }
+      steps {
+          script {
+              pcsPipelineStep
+                      .checkOutBranch()
+                      .generateGitTag()
+                      .publishJarToNexus()
+                      .generateChangelog()
+
+          }
+      }
+  }
+  }
+  post{
+    success{
+      slackSend (color: "good", message: "SUCCESSFUL: Job. ${env.JOB_NAME} ${env.BUILD_NUMBER} (<${env.BUILD_URL}|Open>)")
+    }
+    failure {
+      slackSend color: 'danger', message: "FAILED: Job. ${env.JOB_NAME} ${env.BUILD_NUMBER} (<${env.BUILD_URL}|Open>)"
+    }
+
+  }
+}

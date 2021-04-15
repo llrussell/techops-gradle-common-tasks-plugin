@@ -1,0 +1,49 @@
+plugins {
+    id 'java'
+    id 'groovy'
+    id 'java-gradle-plugin'
+    id 'maven-publish'
+    id 'idea'
+    id 'eclipse'
+}
+
+description = "A project building a helper gradle plugin to share common tasks across multiple projects"
+
+repositories {
+    gradlePluginPortal()
+    mavenLocal()
+    mavenCentral()
+    jcenter()
+}
+
+
+dependencies {
+    implementation "gradle.plugin.org.unbroken-dome.gradle-plugins:gradle-gitversion-plugin:$gradle_gitversion_plugin_version"
+    implementation "gradle.plugin.com.github.spotbugs:spotbugs-gradle-plugin:$spotbugs_gradle_plugin_version"
+    implementation 'com.h3xstream.findsecbugs:findsecbugs-plugin:1.10.1'
+    implementation "org.sonarqube:org.sonarqube.gradle.plugin:$sonarqube_gradle_plugin_version"
+    implementation "org.asciidoctor:asciidoctor-gradle-plugin:$asciidoctor_gradle_plugin_version"
+    implementation "org.asciidoctor:asciidoctorj-pdf:$asciidoctorj_pdf_version"
+    implementation "gradle.plugin.se.bjurr.gitchangelog:git-changelog-gradle-plugin:$changelog_gradle_plugin_version"
+    implementation "com.palantir.gradle.docker:gradle-docker:$palantir_docker_plugin_version"
+    implementation "org.springframework.boot:spring-boot-gradle-plugin:$springboot_plugin_version"
+    implementation "io.springfox:springfox-swagger-ui:$springfox_version"
+    implementation "io.springfox:springfox-swagger2:$springfox_version"
+    implementation "no.nils:wsdl2java:$wsdl2java_gradle_plugin_version"
+    implementation "io.github.swagger2markup:swagger2markup-gradle-plugin:$swagger2markup_version"
+    implementation "io.github.swagger2markup:swagger2markup-spring-restdocs-ext:$swagger2markup_version"
+
+    testImplementation "junit:junit:$junit_version"
+    testImplementation("io.springfox:springfox-bean-validators:${springfox_version}")
+    testImplementation("org.mockito:mockito-core:1.+")
+}
+
+gradlePlugin {
+    plugins {
+        simplePlugin {
+            id = 'techops-gradle-common-tasks-plugin'
+            implementationClass = 'org.techops.builder.gradle.plugin.TechOpsGradlePlugin'
+            version = version
+        }
+    }
+}

@@ -1,0 +1,9 @@
+pluginManagement {
+    repositories {
+        gradlePluginPortal()
+        mavenLocal()
+        mavenCentral()
+        jcenter()
+    }
+}
+rootProject.name = 'techops-gradle-common-tasks-plugin'
